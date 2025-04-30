@@ -27,17 +27,40 @@ def failure_response(message, code=404):
 # Get all users
 @app.route("/api/users/")
 def get_users():
-    pass
+    users = [u.serialize() for u in User.querty.all()]
+    return success_response(users)
 
 # Creates user
 @app.route("/api/users/", methods=["POST"])
 def create_user():
-    pass
+    body = json.loads(request.data)
+    try:
+        new_user = User(
+            name = body.get('name'),
+            email = body.get('email'),
+            phone = body.get('phone'),
+            grad_year = body.get('grad_year')
+            )
+    except:
+        failure_response("part of input is not complete or invalid")
+
+    if User.query.filter_by(email=body["email"]).first() is not None:
+        return failure_response("a user with that email already exists")
+    
+    if User.query.filter_by(phone=body["phone"]).first() is not None:
+        return failure_response("a user with that phone number already exists")
+    
+    db.session.add(new_user)
+    db.session.commit()
+    return success_response(new_user.serialize(), 201)
 
 # Get User by ID
 @app.route("/api/users/<int:user_id>/")
 def get_user(user_id):
-    pass
+    user = User.query.filter_by(id=user_id).first()
+    if not user:
+        return failure_response("user not found")
+    return success_response(user.serialize())
 
 # Deletes a user from id
 @app.route("/api/users/<int:user_id>/", methods=["DELETE"])
