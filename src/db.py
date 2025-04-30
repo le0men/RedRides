@@ -110,6 +110,7 @@ class Request(db.Model):
 
     def serialize(self):
         return {
+            "id": self.id,
             "ride_id": self.ride_id,
             "passenger_id": self.passenger_id,
             "status": self.status,
