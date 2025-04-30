@@ -4,9 +4,10 @@ db = SQLAlchemy()
 
 # Classes
 
+
 class User(db.Model):
-  pass
+    pass
+
 
 class Listing(db.Model):
-  pass
-
+    pass
