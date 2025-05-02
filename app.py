@@ -174,7 +174,6 @@ def delete_ride(ride_id):
 # add user (passenger) to listing
 @app.route("/api/rides/<int:user_id>/<int:ride_id>/", methods=["POST"])
 def add_user_to_ride(user_id, ride_id):
-    # TODO: Need to check if adding exceeding available spaces
     ride = Ride.query.filter_by(id=ride_id).first()
     if not ride:
         return failure_response("Ride not found")
