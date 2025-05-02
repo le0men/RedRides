@@ -26,6 +26,12 @@ def failure_response(message, code=404):
 
 # Routes
 
+
+@app.route("/")
+def hello():
+    return "hello world"
+
+
 # ---- USERS ----
 
 
@@ -138,8 +144,9 @@ def create_ride():
 
     driver = get_user(body.get("driver_id"))
     # TODO: Check for conflicts, What is the format of the time passed in?
-    # TODO: Need to add ride to driver's rides list.
+
     db.session.add(new_ride)
+    driver.rides.append(new_ride)
     db.session.commit()
     return success_response(new_ride.serialize(), 201)
 
@@ -165,24 +172,98 @@ def delete_ride(ride_id):
 
 
 # add user (passenger) to listing
-@app.route("/api/rides/<int:listing_id>/<int:ride_id>/", methods=["POST"])
-def add_user_to_ride(listing_id, ride_id):
-    pass
+@app.route("/api/rides/<int:user_id>/<int:ride_id>/", methods=["POST"])
+def add_user_to_ride(user_id, ride_id):
+    # TODO: Need to check if adding exceeding available spaces
+    ride = Ride.query.filter_by(id=ride_id).first()
+    if not ride:
+        return failure_response("Ride not found")
+    passenger = User.query.filter_by(id=user_id).first()
+    if not passenger:
+        return failure_response("User not found")
 
-
-# remove user (passenger) from listing
-@app.route("/api/rides/<int:listing_id>/<int:ride_id>/", methods=["DELETE"])
-def delete_user_from_ride(listing_id, ride_id):
-    pass
-
-
-# check if user is part of listing (either as driver or as passenger)
-@app.route("/api/rides/<int:listing_id>/<int:ride_id>/", methods=["GET"])
-def check_user_in_ride(listing_id, ride_id):
-    pass
+    if ride.available_seats == 0:
+        return failure_response("Ride is full", 400)
+    ride.available_seats -= 1
+    ride.passengers.append(passenger)
+    db.session.commit()
+    return success_response(ride.serialize())
 
 
 # ---- REQUESTS ----
+
+
+# Get all requests
+@app.route("/api/requests/")
+def get_requests():
+    requests = [u.serialize() for u in Request.query.all()]
+    return success_response(requests)
+
+
+# Creates request
+@app.route("/api/requests/", methods=["POST"])
+def create_request():
+    body = json.loads(request.data)
+    try:
+        new_request = Request(
+            ride_id=body.get("ride_id"),
+            passenger_id=body.get("passenger_id"),
+            status="pending",
+        )
+    except:
+        failure_response("Part of input is not complete or invalid", 400)
+
+    ride = Ride.query.filter_by(id=body["ride_id"]).first()
+    if not ride:
+        return failure_response("Ride not found")
+    passenger = User.query.filter_by(id=body["passenger_id"]).first()
+    if not passenger:
+        return failure_response("User not found")
+
+    db.session.add(new_request)
+    db.session.commit()
+    return success_response(new_request.serialize(), 201)
+
+
+# Deletes a request from id
+@app.route("/api/requests/<int:request_id>/", methods=["DELETE"])
+def delete_request(request_id):
+    request = Request.query.filter_by(id=request_id).first()
+    if not request:
+        return failure_response("Request not found")
+    db.session.delete(request)
+    db.session.commit()
+    return success_response(request.serialize())
+
+
+# Get request by ID
+@app.route("/api/request/<int:request_id>/")
+def get_request(request_id):
+    request = Ride.query.filter_by(id=request_id).first()
+    if not request:
+        return failure_response("Request not found")
+    return success_response(request.serialize())
+
+
+# resolve a request
+@app.route("/api/request/<int:request_id>/", methods=["POST"])
+def resolve_request(request_id):
+    body = json.loads(request.data)
+    status = body.get("status")
+
+    if status is None or (status != "yes" and status != "no"):
+        failure_response("Part of input is not complete or invalid", 400)
+
+    request = Request.query.filter_by(id=request_id).first()
+    if not request:
+        return failure_response("Request not found")
+
+    request.status = status
+
+    if status == "yes":
+        add_user_to_ride(request.passenger_id, request.ride_id)
+    db.session.commit()
+    return success_response(request.serialize())
 
 
 if __name__ == "__main__":
