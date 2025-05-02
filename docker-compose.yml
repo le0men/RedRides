@@ -1,0 +1,6 @@
+version: '3'
+services:
+  demo:
+    image: leonerr2004/redrides:v1.0.0
+    ports:
+      - "5000:5000"
