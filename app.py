@@ -29,7 +29,7 @@ def failure_response(message, code=404):
 
 @app.route("/")
 def hello():
-    return "hello world"
+    return "hello world!"
 
 
 # ---- USERS ----
@@ -38,7 +38,7 @@ def hello():
 # Get all users
 @app.route("/api/users/")
 def get_users():
-    users = [u.serialize() for u in User.querty.all()]
+    users = [u.serialize() for u in User.query.all()]
     return success_response(users)
 
 
@@ -120,7 +120,7 @@ def login_user():
 # Get all rides
 @app.route("/api/rides/")
 def get_rides():
-    rides = [u.serialize() for u in Ride.querty.all()]
+    rides = [u.serialize() for u in Ride.query.all()]
     return success_response(rides)
 
 
@@ -142,7 +142,7 @@ def create_ride():
     except:
         failure_response("Part of input is not complete or invalid", 400)
 
-    driver = get_user(body.get("driver_id"))
+    driver = User.query.filter_by(id=body["driver_id"]).first()
     # TODO: Check for conflicts, What is the format of the time passed in?
 
     db.session.add(new_ride)
@@ -220,6 +220,9 @@ def create_request():
     if not passenger:
         return failure_response("User not found")
 
+    if passenger in ride.passengers:
+        return failure_response("User already in Ride", 400)
+
     db.session.add(new_request)
     db.session.commit()
     return success_response(new_request.serialize(), 201)
@@ -237,7 +240,7 @@ def delete_request(request_id):
 
 
 # Get request by ID
-@app.route("/api/request/<int:request_id>/")
+@app.route("/api/requests/<int:request_id>/")
 def get_request(request_id):
     request = Ride.query.filter_by(id=request_id).first()
     if not request:
@@ -246,7 +249,7 @@ def get_request(request_id):
 
 
 # resolve a request
-@app.route("/api/request/<int:request_id>/", methods=["POST"])
+@app.route("/api/requests/<int:request_id>/", methods=["POST"])
 def resolve_request(request_id):
     body = json.loads(request.data)
     status = body.get("status")
@@ -254,16 +257,16 @@ def resolve_request(request_id):
     if status is None or (status != "yes" and status != "no"):
         failure_response("Part of input is not complete or invalid", 400)
 
-    request = Request.query.filter_by(id=request_id).first()
-    if not request:
+    curr_request = Request.query.filter_by(id=request_id).first()
+    if not curr_request:
         return failure_response("Request not found")
 
-    request.status = status
+    curr_request.status = status
 
     if status == "yes":
-        add_user_to_ride(request.passenger_id, request.ride_id)
+        add_user_to_ride(curr_request.passenger_id, curr_request.ride_id)
     db.session.commit()
-    return success_response(request.serialize())
+    return success_response(curr_request.serialize())
 
 
 if __name__ == "__main__":

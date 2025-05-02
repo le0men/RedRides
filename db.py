@@ -24,7 +24,7 @@ class User(db.Model):
     grad_year = db.Column(db.Integer, nullable=False)
     requests = db.relationship("Request")
     rides = db.relationship(
-        "User", secondary=association_table, back_populates="passengers"
+        "Ride", secondary=association_table, back_populates="passengers"
     )
 
     def serialize(self):
@@ -99,7 +99,6 @@ class Request(db.Model):
 
     ride_id = db.Column(db.Integer, db.ForeignKey("ride.id"), nullable=False)
 
-    # TODO: make this reference an the id of an existing passenger
     passenger_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
     # must be either "yes", "no", or "pending"
@@ -111,5 +110,5 @@ class Request(db.Model):
             "ride_id": self.ride_id,
             "passenger_id": self.passenger_id,
             "status": self.status,
-            "passenger_name": User.query.filter_by(id=self.passenger_id).first(),
+            "passenger_name": User.query.filter_by(id=self.passenger_id).first().name,
         }
